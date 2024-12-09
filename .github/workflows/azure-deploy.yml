@@ -1,0 +1,62 @@
+name: Azure FastAPI Deployment
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AZURE_WEBAPP_NAME: app
+  AZURE_WEBAPP_PACKAGE_PATH: '.'
+  PYTHON_VERSION: '3.10'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    # Checkout the code
+    - uses: actions/checkout@v2
+
+    # Setup Python
+    - name: Set up Python version
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    # Install dependencies
+    - name: Create and start virtual environment
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+
+    # Install dependencies
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+
+
+    # Build Docker image
+    - name: Build Docker image
+      run: docker build -t ${{ env.AZURE_WEBAPP_NAME }} .
+
+    # Login to Azure
+    - name: 'Login via Azure CLI'
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    # Deploy to Azure Web App
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        images: ${{ env.AZURE_WEBAPP_NAME }}:latest
+
+    # Logout from Azure
+    - name: Logout
+      run: |
+        az logout
